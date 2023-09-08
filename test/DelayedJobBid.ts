@@ -699,8 +699,8 @@ describe("DelayedJobBid", function () {
         await expect(tx)
           .to.emit(delayedJobBidInstance, "JobExecuted")
           .withArgs(queuedJobId, deployedTargetAddr, userB.address, lowestBidAmount, collateralAmount);
-          console.log("gasCost", gasCost.toString());
-        const balanceUserBAfter = await ethers.provider.getBalance(
+
+          const balanceUserBAfter = await ethers.provider.getBalance(
           userB.address,
         );
         const balanceUserAAfter = await ethers.provider.getBalance(userA.address);
