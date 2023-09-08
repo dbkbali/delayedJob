@@ -24,8 +24,8 @@ contract DelayedJob {
         bytes4 signature;
         uint32 delay;
         uint32 createdAt;
-        uint128 reward;
-        address payable executor;
+        uint256 reward;
+        address executor;
         bytes32 data;
     }
 
@@ -39,7 +39,7 @@ contract DelayedJob {
         bytes32 data,
         uint32 delay,
         uint32 timestamp,
-        uint128 reward,
+        uint256 reward,
         address executor
     );
 
@@ -47,7 +47,7 @@ contract DelayedJob {
         bytes32 indexed jobId,
         address indexed target,
         address indexed executor,
-        uint128 reward
+        uint256 reward
     );
 
     modifier onlyOwner() {
@@ -77,8 +77,8 @@ contract DelayedJob {
         bytes4 signature,
         bytes32 data,
         uint32 delay,
-        uint128 reward,
-        address payable executor
+        uint256 reward,
+        address executor
     ) external payable onlyOwner {
         if (!isContract(target)) revert TargetNotContract(target);
         if (msg.value < reward) revert RewardNotEnough();
@@ -147,8 +147,8 @@ contract DelayedJob {
         bytes32 data,
         uint32 delay,
         uint32 _createdAt,
-        uint128 reward,
-        address payable executor
+        uint256 reward,
+        address executor
     ) public pure returns (bytes32 jobId) {
         return
             keccak256(

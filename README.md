@@ -10,7 +10,7 @@ This project contains 2 contracts for delayed jobs the specs for each of these s
 2. User B can execute the job after the required delay and receive the Eth reward
 3. User A can submit multiple jobs
 
-### DelayedJobBid.sol [in progress]
+### DelayedJobBid.sol
 
 This contract extends the DelayedJob contract and adds the following functionality:
 
@@ -25,6 +25,7 @@ the maximum reward and their bid
 d. When a lower bid is placed, the previous bid is refunded to the previous bidder
 3. User A also sets a timeout on his job with a minimum duration of 1 hour after the delay has elapsed. If the winning bidder does not execute the job within this timeout, User A can cancel the job and claim the collateral the bidder forfeited.
 4. If User B is the lowest bidder and executes the job, User A is refunded the difference in the max bid and the execution bid reward, and User B receives the reward and is refunded his collateral.
+5. If there are no lower bids than the maximum reward the job cannot be executed
 
 ## Prerequisites
 - Node.js ^v18.6.0
@@ -44,3 +45,5 @@ npx hardhat coverage
 ## Notes
 
 - Whilst these tests are written in typescript using the hardhat testing environment - significant speedup in testing time could be had by writing tests using the Foundry testing environment - this would also allow for fuzz testing which is something I would probably do in the event these contracts are to be audited
+- I experimented with gas optimization on both the contracts by initially reducing the timestamp vars to uint32 (positive gas impact) and the reward to uint128 - on the bid contract I found that uint256 for the reward - made queueJob and cancel slightly more expensive however placebid was slightly cheaper - hence I left it as uint256 assuming one would want to optimize to make bidding cheaper. I would probably want to spend more time here to optimize further.
+- I have made the assumption that once jobs are executed and or canceled they are deleted from the jobs mapping - under the assumption that the events will leave an adequate audit trail. Not sure whether there would be any benefit from emitting an event on deletion for transparency purposes - but this would be contingent on the UX you want to present to users.
