@@ -27,7 +27,6 @@ contract DelayedJob {
         uint128 reward;
         address payable executor;
         bytes32 data;
-        bool executed;
     }
 
     address public owner;
@@ -92,8 +91,7 @@ contract DelayedJob {
             createdAt: uint32(block.timestamp),
             reward: reward,
             executor: executor,
-            data: data,
-            executed: false
+            data: data
         });
 
         emit JobQueued(jobId, target, signature, data, delay, uint32(block.timestamp), reward, executor);
@@ -109,10 +107,8 @@ contract DelayedJob {
         if (block.timestamp < job.createdAt + job.delay) {
             revert JobNotReady(jobId, job.createdAt + job.delay);
         }
-        if (job.executed) revert JobAlreadyExecuted(jobId);
         if (msg.sender != job.executor) revert NotJobExecutor(jobId);
 
-        job.executed = true;
         (bool success, ) = job.target.call(
             abi.encodePacked(job.signature, abi.encode(job.data))
         );
@@ -120,7 +116,7 @@ contract DelayedJob {
         payable(msg.sender).transfer(job.reward);
 
         emit JobExecuted(jobId, job.target, job.executor, job.reward);
-        // delete the job
+        // delete the job after execution        
         delete jobs[jobId];
     }
 

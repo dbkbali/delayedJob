@@ -2,12 +2,11 @@ import {
   time,
   loadFixture,
 } from "@nomicfoundation/hardhat-toolbox/network-helpers";
-import { expect, use } from "chai";
+import { expect } from "chai";
 import { ethers } from "hardhat";
-import { AddressLike, BytesLike, Contract, ContractTransactionResponse, Typed } from "ethers";
+import { AddressLike, BytesLike, ContractTransactionResponse, Typed } from "ethers";
 import { DelayedJob, TargetContract } from "../typechain-types";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
 describe("DelayedJob", function () {
   // We define a fixture to reuse the same setup in every test.
@@ -111,10 +110,10 @@ describe("DelayedJob", function () {
         expect(job.target).to.equal(deployedTargetContract);
         expect(job.signature).to.equal(signature);
         expect(job.data).to.equal(data);
+        expect(job.createdAt).to.equal(newTimestamp);
         expect(job.delay).to.equal(delay);
         expect(job.reward).to.equal(reward);
         expect(job.executor).to.equal(executor);
-
       });
 
     });
@@ -168,6 +167,7 @@ describe("DelayedJob", function () {
           ],
           [deployedTargetContractAddr, signature, data, delay, timestamp, reward, executor]);
       });
+
       it("should revert if job does not exist", async function () {
 
         const jobId = ethers.keccak256(ethers.randomBytes(32));
@@ -176,25 +176,37 @@ describe("DelayedJob", function () {
           .withArgs(jobId);
 
       });
+
       it("should revert after delay if not called by executor", async function () {
-        const jobId = ethers.solidityPackedKeccak256(
+        const queuedJobId = ethers.solidityPackedKeccak256(
           [
             "address",
             "bytes4",
-            "bytes",
-            "uint256",
-            "uint256",
-            "uint256",
-            "address"
+            "bytes32",
+            "uint32",
+            "uint32",
+            "uint128",
+            "address",
           ],
-          [deployedTargetContractAddr, signature, data, delay, timestamp, reward, userB.address]);
+          [
+            deployedTargetContractAddr,
+            signature,
+            data,
+            delay,
+            timestamp,
+            reward,
+            userB.address,
+          ],
+        );
 
         await time.setNextBlockTimestamp(timestamp + delay + 1);
         await expect(delayedJobInstance.connect(userA).execute(queuedJobId)).to.be.revertedWithCustomError(delayedJobInstance, "NotJobExecutor").withArgs(queuedJobId);
       });
+
       it("should revert if called before delay", async function () {
         await expect(delayedJobInstance.connect(userB).execute(queuedJobId)).to.be.revertedWithCustomError(delayedJobInstance, "JobNotReady").withArgs(queuedJobId, timestamp + delay);
       });
+
       it("should execute job if called after delay by executor", async function () {
         const balanceUserBPrior = await ethers.provider.getBalance(userB.address);
         await time.setNextBlockTimestamp(timestamp + delay + 1);
@@ -223,6 +235,7 @@ describe("DelayedJob", function () {
         // check value of TargetContract
         expect(await deployedTarget.value()).to.equal(1001);
       });
+
       it("should revert if called twice", async function () {
         await time.setNextBlockTimestamp(timestamp + delay + 1);
         await delayedJobInstance.connect(userB).execute(queuedJobId);
@@ -239,6 +252,7 @@ describe("DelayedJob", function () {
         await delayedJobInstance.queueJob(deployedTargetContractAddr, signature, data, delay, reward, executor, {
           value: reward
         });
+        
         const jobId = ethers.solidityPackedKeccak256(
           [
             "address",
