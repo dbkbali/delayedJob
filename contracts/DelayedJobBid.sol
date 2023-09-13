@@ -10,17 +10,17 @@ pragma solidity ^0.8.9;
 contract DelayedJobBid {
     // Custom error messages
     error BidPeriodOver(bytes32 jobId);
-    error BidNotLowest(bytes32 jobId, uint256 bidAmount, uint256 lowestBid);
+    error BidNotLowest(bytes32 jobId, uint128 bidAmount, uint128 lowestBid);
     error JobAlreadyExecuted(bytes32 jobId);
     error JobExecutionFailed(bytes32 jobId);
     error JobDoesNotExist(bytes32 jobId);
-    error JobNotReady(bytes32 jobId, uint256 readyAt);
-    error JobTimeoutNotOver(bytes32 jobId, uint256 timeoutAt);
+    error JobNotReady(bytes32 jobId, uint32 readyAt);
+    error JobTimeoutNotOver(bytes32 jobId, uint128 timeoutAt);
     error NoBidsForJob(bytes32 jobId);
     error NotEnoughCollateral(
         bytes32 jobId,
-        uint256 jobBidCollateral,
-        uint256 msgValue,
+        uint128 jobBidCollateral,
+        uint128 msgValue,
         address currentBidder
     );
     error NotJobLowestBidder(bytes32 jobId);
@@ -28,18 +28,17 @@ contract DelayedJobBid {
     error RewardNotEnough();
     error TargetNotContract(address target);
     error TimeoutTooShort();
-
     struct Job {
         address target;
+        address lowestBidder;
         bytes4 signature;
         uint32 delay;
         uint32 createdAt;
         uint32 timeout;
-        uint256 maxReward;
-        uint256 lowestBid;
-        address lowestBidder;
-        uint256 bidCollateral;
+        uint128 maxReward;
+        uint128 lowestBid;
         bytes32 data;
+        uint128 bidCollateral;
     }
 
     address constant ZERO_ADDRESS = address(0);
@@ -55,7 +54,7 @@ contract DelayedJobBid {
         bytes32 data,
         uint32 delay,
         uint32 createdAt,
-        uint256 maxReward,
+        uint128 maxReward,
         uint32 timeout
     );
 
@@ -63,22 +62,18 @@ contract DelayedJobBid {
         bytes32 indexed jobId,
         address indexed target,
         address indexed lowestBidder,
-        uint256 bidAmount,
-        uint256 bidCollateral
+        uint128 bidAmount,
+        uint128 bidCollateral
     );
 
     event NewBid(
         bytes32 indexed jobId,
         address indexed bidder,
-        uint256 bidAmount,
-        uint256 bidCollateral
+        uint128 bidAmount,
+        uint128 bidCollateral
     );
 
-    event JobCancelled(
-        bytes32 indexed jobId,
-        uint256 bidCollateral,
-        uint32 timestamp
-    );
+    event JobCancelled(bytes32 indexed jobId, uint128 bidCollateral, uint32 timestamp);
 
     modifier onlyOwner() {
         if (msg.sender != owner) {
@@ -107,7 +102,7 @@ contract DelayedJobBid {
         bytes4 signature,
         bytes32 data,
         uint32 delay,
-        uint256 maxReward,
+        uint128 maxReward,
         uint32 timeout
     ) external payable onlyOwner {
         if (timeout < MIN_TIMEOUT) revert TimeoutTooShort();
@@ -155,22 +150,15 @@ contract DelayedJobBid {
      * @param bidAmount The amount of the bid in wei.
      * @notice The job must exist, not have been executed, and the bid period must be open.
      */
-    function placeBid(bytes32 jobId, uint256 bidAmount) external payable {
+    function placeBid(bytes32 jobId, uint128 bidAmount) external payable {
         Job storage job = jobs[jobId];
-        if (block.timestamp > job.createdAt + job.delay)
-            revert BidPeriodOver(jobId);
-        if (bidAmount >= job.lowestBid)
-            revert BidNotLowest(jobId, bidAmount, job.lowestBid);
+        if (block.timestamp > job.createdAt + job.delay) revert BidPeriodOver(jobId);
+        if (bidAmount >= job.lowestBid) revert BidNotLowest(jobId, bidAmount, job.lowestBid);
 
-        uint256 jobBidCollateral = job.maxReward - bidAmount;
+        uint128 jobBidCollateral = job.maxReward - bidAmount;
 
         if (msg.value < jobBidCollateral)
-            revert NotEnoughCollateral(
-                jobId,
-                jobBidCollateral,
-                uint256(msg.value),
-                msg.sender
-            );
+            revert NotEnoughCollateral(jobId, jobBidCollateral, uint128(msg.value), msg.sender);
 
         // refund the curremt lowest bidder with their bid collateral
         if (job.lowestBidder != address(0)) {
@@ -178,9 +166,9 @@ contract DelayedJobBid {
         }
 
         // update the job with the new lowest bid and bidder
-        job.lowestBid = bidAmount;
+        job.lowestBid = uint128(bidAmount);
         job.lowestBidder = payable(msg.sender);
-        job.bidCollateral = uint256(msg.value);
+        job.bidCollateral = uint128(msg.value);
 
         emit NewBid(jobId, msg.sender, bidAmount, job.bidCollateral);
     }
@@ -195,10 +183,7 @@ contract DelayedJobBid {
         Job storage job = jobs[jobId];
         if (job.createdAt == 0) revert JobDoesNotExist(jobId);
         if (block.timestamp < job.createdAt + job.delay + job.timeout)
-            revert JobTimeoutNotOver(
-                jobId,
-                job.createdAt + job.delay + job.timeout
-            );
+            revert JobTimeoutNotOver(jobId, job.createdAt + job.delay + job.timeout);
 
         payable(owner).transfer(job.bidCollateral);
 
@@ -223,9 +208,7 @@ contract DelayedJobBid {
         }
         if (msg.sender != job.lowestBidder) revert NotJobLowestBidder(jobId);
 
-        (bool success, ) = job.target.call(
-            abi.encodePacked(job.signature, abi.encode(job.data))
-        );
+        (bool success, ) = job.target.call(abi.encodePacked(job.signature, abi.encode(job.data)));
         if (!success) revert JobExecutionFailed(jobId);
 
         // transfer the bid collateral and reward to the lowest bidder
@@ -265,20 +248,13 @@ contract DelayedJobBid {
         bytes32 data,
         uint32 delay,
         uint32 _createdAt,
-        uint256 maxReward,
+        uint128 maxReward,
         uint32 timeout
     ) public pure returns (bytes32 jobId) {
         return
             keccak256(
-                abi.encodePacked(
-                    target,
-                    signature,
-                    data,
-                    delay,
-                    _createdAt,
-                    maxReward,
-                    timeout
-                )
+                abi.encodePacked(target, signature, data, delay, _createdAt, maxReward, timeout)
             );
     }
 }
+

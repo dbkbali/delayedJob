@@ -47,3 +47,22 @@ npx hardhat coverage
 - Whilst these tests are written in typescript using the hardhat testing environment - significant speedup in testing time could be had by writing tests using the Foundry testing environment - this would also allow for fuzz testing which is something I would probably do in the event these contracts are to be audited
 - I experimented with gas optimization on both the contracts by initially reducing the timestamp vars to uint32 (positive gas impact) and the reward to uint128 - on the bid contract I found that uint256 for the reward - made queueJob and cancel slightly more expensive however placebid was slightly cheaper - hence I left it as uint256 assuming one would want to optimize to make bidding cheaper. I would probably want to spend more time here to optimize further.
 - I have made the assumption that once jobs are executed and or canceled they are deleted from the jobs mapping - under the assumption that the events will leave an adequate audit trail. Not sure whether there would be any benefit from emitting an event on deletion for transparency purposes - but this would be contingent on the UX you want to present to users.
+
+- couldnt resist tweaking with gas optimization as a learning exercise so tried to pack the struct -
+
+    experiment 1: reorder so addresses first
+    result: gas cancelJob: 56585 => 56585
+            gas execute:   73230 => 73230
+            gas placeBid:  77271 => 59596
+            gas queueJob:  150490 => 170390
+        
+    experiment 2: try with uint128 for bid and reward values (incremental)
+    result: gas cancelJob: 56585 => 52976
+            gas execute:   73230 => 70018
+            gas placeBid:  59596 => 60042
+            gas queueJob:  150490 => 148739
+
+    experiment 3: try with uint64 for bid and reward values (assumes max Reward (2^64 - 1)/10^18 = 18.4 ether - is this the maximum Reward that we would ever set?)
+    result: 
+
+
