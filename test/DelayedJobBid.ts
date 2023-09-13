@@ -177,7 +177,7 @@ describe("DelayedJobBid", function () {
             "bytes32",
             "uint32",
             "uint32",
-            "uint128",
+            "uint64",
             "uint32",
           ],
           [
@@ -291,7 +291,7 @@ describe("DelayedJobBid", function () {
           "bytes32",
           "uint32",
           "uint32",
-          "uint128",
+          "uint64",
           "uint32",
         ],
         [
@@ -452,7 +452,7 @@ describe("DelayedJobBid", function () {
           "bytes32",
           "uint32",
           "uint32",
-          "uint128",
+          "uint64",
           "uint32",
         ],
         [
@@ -602,7 +602,7 @@ describe("DelayedJobBid", function () {
             "bytes32",
             "uint32",
             "uint32",
-            "uint128",
+            "uint64",
             "uint32",
           ],
           [
@@ -744,7 +744,7 @@ describe("DelayedJobBid", function () {
             "bytes32",
             "uint32",
             "uint32",
-            "uint128",
+            "uint64",
             "uint32",
           ],
           [

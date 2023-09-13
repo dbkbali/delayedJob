@@ -45,10 +45,10 @@ npx hardhat coverage
 ## Notes
 
 - Whilst these tests are written in typescript using the hardhat testing environment - significant speedup in testing time could be had by writing tests using the Foundry testing environment - this would also allow for fuzz testing which is something I would probably do in the event these contracts are to be audited
-- I experimented with gas optimization on both the contracts by initially reducing the timestamp vars to uint32 (positive gas impact) and the reward to uint128 - on the bid contract I found that uint256 for the reward - made queueJob and cancel slightly more expensive however placebid was slightly cheaper - hence I left it as uint256 assuming one would want to optimize to make bidding cheaper. I would probably want to spend more time here to optimize further.
 - I have made the assumption that once jobs are executed and or canceled they are deleted from the jobs mapping - under the assumption that the events will leave an adequate audit trail. Not sure whether there would be any benefit from emitting an event on deletion for transparency purposes - but this would be contingent on the UX you want to present to users.
 
-- couldnt resist tweaking with gas optimization as a learning exercise so tried to pack the struct -
+## GAS Optimization
+- couldnt resist tweaking with gas optimization as a learning exercise so focused on optimizing the Job Struct
 
     experiment 1: reorder so addresses first
     result: gas cancelJob: 56585 => 56585
@@ -62,7 +62,14 @@ npx hardhat coverage
             gas placeBid:  59596 => 60042
             gas queueJob:  150490 => 148739
 
-    experiment 3: try with uint64 for bid and reward values (assumes max Reward (2^64 - 1)/10^18 = 18.4 ether - is this the maximum Reward that we would ever set?)
-    result: 
+    experiment 3: try with uint64 for bid and reward values (assumes max Reward (2^64 - 1)/10^18 = 18.4 ether - is this the maximum Reward that we would ever set?) -incremental over 2 above
+    result: gas cancelJob: 52976 => 49212
+            gas execute:   70018 => 66320
+            gas placeBid:  60042 => 58165
+            gas queueJob:  150490 => 126888
+
+    ### Conclusion
+    - more experimentation possible - for example using assembly to save the struct could result in even more gas saving (but at the expense of complexity)!
+    - Depending on the Max Reward ever expected for an auction uint64 is enough to cover a reward of 18.4 ether! - may want to add some protections against overflows etc ..
 
 

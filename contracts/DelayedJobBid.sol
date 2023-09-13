@@ -10,17 +10,17 @@ pragma solidity ^0.8.9;
 contract DelayedJobBid {
     // Custom error messages
     error BidPeriodOver(bytes32 jobId);
-    error BidNotLowest(bytes32 jobId, uint128 bidAmount, uint128 lowestBid);
+    error BidNotLowest(bytes32 jobId, uint64 bidAmount, uint64 lowestBid);
     error JobAlreadyExecuted(bytes32 jobId);
     error JobExecutionFailed(bytes32 jobId);
     error JobDoesNotExist(bytes32 jobId);
     error JobNotReady(bytes32 jobId, uint32 readyAt);
-    error JobTimeoutNotOver(bytes32 jobId, uint128 timeoutAt);
+    error JobTimeoutNotOver(bytes32 jobId, uint64 timeoutAt);
     error NoBidsForJob(bytes32 jobId);
     error NotEnoughCollateral(
         bytes32 jobId,
-        uint128 jobBidCollateral,
-        uint128 msgValue,
+        uint64 jobBidCollateral,
+        uint64 msgValue,
         address currentBidder
     );
     error NotJobLowestBidder(bytes32 jobId);
@@ -35,10 +35,10 @@ contract DelayedJobBid {
         uint32 delay;
         uint32 createdAt;
         uint32 timeout;
-        uint128 maxReward;
-        uint128 lowestBid;
+        uint64 maxReward;
+        uint64 lowestBid;
         bytes32 data;
-        uint128 bidCollateral;
+        uint64 bidCollateral;
     }
 
     address constant ZERO_ADDRESS = address(0);
@@ -54,7 +54,7 @@ contract DelayedJobBid {
         bytes32 data,
         uint32 delay,
         uint32 createdAt,
-        uint128 maxReward,
+        uint64 maxReward,
         uint32 timeout
     );
 
@@ -62,18 +62,18 @@ contract DelayedJobBid {
         bytes32 indexed jobId,
         address indexed target,
         address indexed lowestBidder,
-        uint128 bidAmount,
-        uint128 bidCollateral
+        uint64 bidAmount,
+        uint64 bidCollateral
     );
 
     event NewBid(
         bytes32 indexed jobId,
         address indexed bidder,
-        uint128 bidAmount,
-        uint128 bidCollateral
+        uint64 bidAmount,
+        uint64 bidCollateral
     );
 
-    event JobCancelled(bytes32 indexed jobId, uint128 bidCollateral, uint32 timestamp);
+    event JobCancelled(bytes32 indexed jobId, uint64 bidCollateral, uint32 timestamp);
 
     modifier onlyOwner() {
         if (msg.sender != owner) {
@@ -102,7 +102,7 @@ contract DelayedJobBid {
         bytes4 signature,
         bytes32 data,
         uint32 delay,
-        uint128 maxReward,
+        uint64 maxReward,
         uint32 timeout
     ) external payable onlyOwner {
         if (timeout < MIN_TIMEOUT) revert TimeoutTooShort();
@@ -150,15 +150,15 @@ contract DelayedJobBid {
      * @param bidAmount The amount of the bid in wei.
      * @notice The job must exist, not have been executed, and the bid period must be open.
      */
-    function placeBid(bytes32 jobId, uint128 bidAmount) external payable {
+    function placeBid(bytes32 jobId, uint64 bidAmount) external payable {
         Job storage job = jobs[jobId];
         if (block.timestamp > job.createdAt + job.delay) revert BidPeriodOver(jobId);
         if (bidAmount >= job.lowestBid) revert BidNotLowest(jobId, bidAmount, job.lowestBid);
 
-        uint128 jobBidCollateral = job.maxReward - bidAmount;
+        uint64 jobBidCollateral = job.maxReward - bidAmount;
 
         if (msg.value < jobBidCollateral)
-            revert NotEnoughCollateral(jobId, jobBidCollateral, uint128(msg.value), msg.sender);
+            revert NotEnoughCollateral(jobId, jobBidCollateral, uint64(msg.value), msg.sender);
 
         // refund the curremt lowest bidder with their bid collateral
         if (job.lowestBidder != address(0)) {
@@ -166,9 +166,9 @@ contract DelayedJobBid {
         }
 
         // update the job with the new lowest bid and bidder
-        job.lowestBid = uint128(bidAmount);
+        job.lowestBid = uint64(bidAmount);
         job.lowestBidder = payable(msg.sender);
-        job.bidCollateral = uint128(msg.value);
+        job.bidCollateral = uint64(msg.value);
 
         emit NewBid(jobId, msg.sender, bidAmount, job.bidCollateral);
     }
@@ -248,7 +248,7 @@ contract DelayedJobBid {
         bytes32 data,
         uint32 delay,
         uint32 _createdAt,
-        uint128 maxReward,
+        uint64 maxReward,
         uint32 timeout
     ) public pure returns (bytes32 jobId) {
         return
